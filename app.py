@@ -1045,7 +1045,6 @@ def get_community_signals(company_name: str, filing_date_str: str) -> dict:
                 "https://newsapi.org/v2/everything",
                 params={
                     "q": f'"{clean_name}" bankruptcy',
-                    "from": filing_date_clean,
                     "sortBy": "relevancy",
                     "language": "en",
                     "pageSize": 100,
@@ -1936,48 +1935,74 @@ def main():
             total           = breakdown.get("total", row["Score"])
 
             # ── Community Signal volume ──
+            # Only render signals that returned data. Hides rows when API
+            # unavailable or no results found (Reddit blocked on Cloud IPs,
+            # NewsAPI free tier capped, Trends rate-limited, etc.).
+            signal_rows = []
+            if reddit_mentions > 0:
+                signal_rows.append(
+                    f"🟠 **Reddit** — mentions since filing ({days} days ago): **{reddit_mentions} posts** &nbsp;`+{reddit_score} pts`"
+                )
+            if news_articles > 0:
+                signal_rows.append(
+                    f"📰 **News** — articles indexed: **{news_articles} articles** &nbsp;`+{news_score} pts`"
+                )
+            if trends_spike > 0:
+                signal_rows.append(
+                    f"📈 **Google Trends** — peak interest: **{trends_spike}/100** &nbsp;`+{trends_score} pts`"
+                )
+
             st.markdown("**📊 Community Awareness Breakdown**")
             st.markdown("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            st.markdown(f"🟠 **Reddit** — mentions since filing ({days} days ago): **{reddit_mentions} posts** &nbsp;`+{reddit_score} pts`", unsafe_allow_html=True)
-            st.markdown(f"📰 **News** — articles since filing: **{news_articles} articles** &nbsp;`+{news_score} pts`", unsafe_allow_html=True)
-            st.markdown(f"📈 **Google Trends** — peak interest: **{trends_spike}/100** &nbsp;`+{trends_score} pts`", unsafe_allow_html=True)
+            if signal_rows:
+                for row_md in signal_rows:
+                    st.markdown(row_md, unsafe_allow_html=True)
+            else:
+                st.caption("Live community-awareness signals unavailable for this filing. Base score reflects asset-type and recency analysis.")
 
-            # ── Sentiment analysis ──
-            st.markdown("### 📊 Community Sentiment Analysis")
-            s_col1, s_col2, s_col3 = st.columns(3)
-            with s_col1:
-                st.metric(
-                    "Overall Sentiment",
-                    sent.get("sentiment_label", "🟡 Neutral"),
-                    f"Score: {sent.get('sentiment_score', 0)}",
-                )
-            with s_col2:
-                st.metric(
-                    "🏘️ Ownership Intent Posts",
-                    sent.get("ownership_intent", 0),
-                    "buy/save/community language",
-                )
-            with s_col3:
-                st.metric(
-                    "💔 Nostalgia/Loss Posts",
-                    sent.get("nostalgia_signals", 0),
-                    "miss/love/bring back language",
-                )
-
-            neg = sent.get("negative_signals", 0)
-            pos = sent.get("ownership_intent", 0) + sent.get("nostalgia_signals", 0)
-            if neg > pos and neg > 5:
-                st.warning(
-                    f"⚠️ Negative sentiment dominates: {neg} dismissive posts vs "
-                    f"{pos} supportive posts. Community ownership potential may be lower than volume suggests."
-                )
-
-            if sent.get("sample_posts"):
-                st.markdown("**Sample community posts showing ownership/nostalgia signals:**")
-                for post in sent["sample_posts"]:
-                    st.markdown(
-                        f"- {post['signal']}: [{post['title']}]({post['url']}) (👍 {post['score']} upvotes)"
+            # ── Sentiment analysis (only renders if VADER captured signal) ──
+            total_sentiment_signal = (
+                sent.get("ownership_intent", 0)
+                + sent.get("nostalgia_signals", 0)
+                + sent.get("negative_signals", 0)
+                + sent.get("total_analyzed", 0)
+            )
+            if total_sentiment_signal > 0:
+                st.markdown("### 📊 Community Sentiment Analysis")
+                s_col1, s_col2, s_col3 = st.columns(3)
+                with s_col1:
+                    st.metric(
+                        "Overall Sentiment",
+                        sent.get("sentiment_label", "🟡 Neutral"),
+                        f"Score: {sent.get('sentiment_score', 0)}",
                     )
+                with s_col2:
+                    st.metric(
+                        "🏘️ Ownership Intent Posts",
+                        sent.get("ownership_intent", 0),
+                        "buy/save/community language",
+                    )
+                with s_col3:
+                    st.metric(
+                        "💔 Nostalgia/Loss Posts",
+                        sent.get("nostalgia_signals", 0),
+                        "miss/love/bring back language",
+                    )
+
+                neg = sent.get("negative_signals", 0)
+                pos = sent.get("ownership_intent", 0) + sent.get("nostalgia_signals", 0)
+                if neg > pos and neg > 5:
+                    st.warning(
+                        f"⚠️ Negative sentiment dominates: {neg} dismissive posts vs "
+                        f"{pos} supportive posts. Community ownership potential may be lower than volume suggests."
+                    )
+
+                if sent.get("sample_posts"):
+                    st.markdown("**Sample community posts showing ownership/nostalgia signals:**")
+                    for post in sent["sample_posts"]:
+                        st.markdown(
+                            f"- {post['signal']}: [{post['title']}]({post['url']}) (👍 {post['score']} upvotes)"
+                        )
 
             # ── Score breakdown (additive formula) ──
             st.markdown("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
