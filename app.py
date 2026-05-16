@@ -546,14 +546,21 @@ SIZE_POINTS = {
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def get_secret(key: str, default: str = "") -> str:
-    """Read a secret from st.secrets (Streamlit Cloud) with env-var fallback (local)."""
-    try:
-        value = st.secrets.get(key, "")
-        if value:
-            return value
-    except Exception:
-        pass
-    return os.environ.get(key, default)
+    """Read a secret from st.secrets (Streamlit Cloud) with env-var fallback (local).
+    Case-insensitive — tries the exact key, then upper, then lower. This guards
+    against case-mismatch bugs when secrets are set via Streamlit Cloud's UI
+    (e.g. NEWS_API_KEY vs news_api_key)."""
+    for candidate in (key, key.upper(), key.lower()):
+        try:
+            value = st.secrets.get(candidate, "")
+            if value:
+                return value
+        except Exception:
+            pass
+        env_value = os.environ.get(candidate, "")
+        if env_value:
+            return env_value
+    return default
 
 
 BUSINESS_SUFFIXES = (
