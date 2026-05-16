@@ -411,6 +411,18 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
+    /* Hide the broken sidebar-collapse icon text. Streamlit's sidebar
+       collapse button uses a Material Symbols Rounded glyph; our
+       universal Inter rule prevents the icon font from rendering, so
+       "keyboard_double_arrow_left" displays as raw text overflowing
+       the 1.5rem container. color: transparent on the icon span keeps
+       the button clickable while hiding the glyph text. */
+    [class*="emotion-cache-12bp31y"],
+    [data-testid="stSidebarCollapseButton"] span,
+    [data-testid="stSidebarCollapsedControl"] span {
+        color: transparent !important;
+    }
+
     /* ── Buttons ─────────────────────────────────────────────────────── */
     .stButton > button {
         background: var(--bg) !important;
