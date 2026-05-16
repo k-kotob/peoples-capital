@@ -1,0 +1,28 @@
+# Streamlit secrets (committed: .streamlit/secrets.toml.example)
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# Local env files
+.env
+.env.local
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Probe / scratch files (not part of the deploy)
+baseline_probe.py
